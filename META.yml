@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               Text-Snippet
-version:            0.01
+version:            0.02
 abstract:           TextMate-like snippet functionality
 author:
     - Brian Phillips <bphillips@cpan.org>
