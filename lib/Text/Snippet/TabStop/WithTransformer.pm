@@ -1,4 +1,9 @@
 package Text::Snippet::TabStop::WithTransformer;
+BEGIN {
+  $Text::Snippet::TabStop::WithTransformer::VERSION = '0.04';
+}
+
+# ABSTRACT: Tab stop that modifies the replacement value supplied by the user
 
 use strict;
 use warnings;
@@ -6,9 +11,46 @@ use base qw(Text::Snippet::TabStop);
 use Carp qw(croak);
 use Class::XSAccessor getters => { transformer => 'transformer' };
 
+
+sub to_string {
+	my $self = shift;
+	my $output = $self->SUPER::to_string;
+	return $self->transformer->($output);
+}
+sub parse {
+	my $class = shift;
+	my $src   = shift;
+	if ( $src =~ m{^\$\{(\d+)/([^/]+?)/([^/]*)/(.*?)\}$} ) {
+		my ( $tab_index, $search, $replace, $flags ) = ( $1, $2, $3, $4 );
+		$replace =~ s/\$0/\$&/g;
+		if ( length($flags) ) {
+			$search = "(?$flags$search)";
+		}
+		my $transformer = sub {
+			my $out = shift;
+			if ( $out =~ m/$search/ ) {
+				eval "\$out =~ s{\$search}{$replace}g";
+				die $@ if($@);
+			}
+			return $out;
+		};
+		return $class->_new( src => $src, index => $tab_index, transformer => $transformer );
+	}
+	return;
+}
+
+1;
+
+__END__
+=pod
+
 =head1 NAME
 
 Text::Snippet::TabStop::WithTransformer - Tab stop that modifies the replacement value supplied by the user
+
+=head1 VERSION
+
+version 0.04
 
 =head1 EXAMPLE SYNTAX
 
@@ -57,33 +99,16 @@ after applying the transformation specified in the tab stop.
 
 =back
 
+=head1 AUTHOR
+
+  Brian Phillips <bphillips@cpan.org>
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2010 by Brian Phillips.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
 =cut
 
-sub to_string {
-	my $self = shift;
-	my $output = $self->SUPER::to_string;
-	return $self->transformer->($output);
-}
-sub parse {
-	my $class = shift;
-	my $src   = shift;
-	if ( $src =~ m{^\$\{(\d+)/([^/]+?)/([^/]*)/(.*?)\}$} ) {
-		my ( $tab_index, $search, $replace, $flags ) = ( $1, $2, $3, $4 );
-		$replace =~ s/\$0/\$&/g;
-		if ( length($flags) ) {
-			$search = "(?$flags$search)";
-		}
-		my $transformer = sub {
-			my $out = shift;
-			if ( $out =~ m/$search/ ) {
-				eval "\$out =~ s{\$search}{$replace}g";
-				die $@ if($@);
-			}
-			return $out;
-		};
-		return $class->_new( src => $src, index => $tab_index, transformer => $transformer );
-	}
-	return;
-}
-
-1;
